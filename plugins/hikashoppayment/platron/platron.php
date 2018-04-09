@@ -15,7 +15,7 @@ class plgHikashoppaymentPlatron extends hikashopPaymentPlugin
 		'RUB', 'RUR', 'EUR', 'USD', 'KZT'
 	);
 
-	var $url = 'https://paybox.kz/payment.php';
+	var $url = 'https://api.paybox.money/payment.php';
 	var $arrPaymentParams = array();
 	var $multiple = true;
 	var $name = 'platron';
@@ -43,12 +43,12 @@ class plgHikashoppaymentPlatron extends hikashopPaymentPlugin
 				$strDescription .= "*".$objItem->order_product_quantity;
 			$strDescription .= "; ";
 		}
-		
+
 		$server_url = HIKASHOP_LIVE.'index.php?option=com_hikashop&ctrl=checkout&task=notify&notif_payment=platron&notif_id='.$method_id.'&tmpl=component';
 		$strCurrency = $this->currency->currency_code;
 		if($strCurrency == 'RUR')
 			$strCurrency = 'RUB';
-		
+
 		$arrFields = array(
 			'pg_merchant_id'		=> $this->payment_params->merchant_id,
 			'pg_order_id'			=> $order->order_id,
@@ -72,24 +72,24 @@ class plgHikashoppaymentPlatron extends hikashopPaymentPlugin
 			$strPhone = implode('',@$array[0]);
 			$arrFields['pg_user_phone'] = $strPhone;
 		}
-		
+
 		if(!empty($order->cart->shipping_address->billing_address)){
 			preg_match_all("/\d/", $order->cart->billing_address->address_telephone, $array);
 			$strPhone = implode('',@$array[0]);
 			$arrFields['pg_user_phone'] = $strPhone;
 		}
-		
+
 		if(!empty($order->cart->customer->email)){
 			$arrFields['pg_user_email'] = $order->cart->customer->email;
 			$arrFields['pg_user_contact_email'] = $order->cart->customer->email;
 		}
-		
+
 		if(!empty($this->payment_params->payment_system))
 			$arrFields['pg_payment_system'] = $this->payment_params->payment_system;
 
 		$arrFields['pg_sig'] = PG_Signature::make('payment.php', $arrFields, $this->payment_params->secret_key);
 		$this->arrPaymentParams = $arrFields;
-		
+
 		return $this->showPage($viewType);
 	}
 
@@ -104,10 +104,10 @@ class plgHikashoppaymentPlatron extends hikashopPaymentPlugin
 			$arrRequest = $_POST;
 		else
 			$arrRequest = $_GET;
-			
+
 		unset($arrRequest['hikashop_front_end_main']);
 		unset($arrRequest['view']);
-		
+
 		$thisScriptName = PG_Signature::getOurScriptName();
 
 		if (empty($arrRequest['pg_sig']) || !PG_Signature::check($arrRequest['pg_sig'], $thisScriptName, $arrRequest, $this->payment_params->secret_key))
@@ -118,7 +118,7 @@ class plgHikashoppaymentPlatron extends hikashopPaymentPlugin
 		if(!isset($arrRequest['pg_result'])){
 			$bCheckResult = 0;
 			if(empty($dbOrder) || $dbOrder->order_status != $this->payment_params->pending_status)
-				$error_desc = "Товар не доступен. Либо заказа нет, либо его статус " . $statuses[$dbOrder->order_status];	
+				$error_desc = "Товар не доступен. Либо заказа нет, либо его статус " . $statuses[$dbOrder->order_status];
 			elseif(sprintf('%0.2f',$arrRequest['pg_amount']) != sprintf('%0.2f',$dbOrder->order_full_price))
 				$error_desc = "Неверная сумма";
 			else
@@ -138,24 +138,24 @@ class plgHikashoppaymentPlatron extends hikashopPaymentPlugin
 		}
 		else{
 			$bResult = 0;
-			if(empty($dbOrder) || 
+			if(empty($dbOrder) ||
 					(($dbOrder->order_status != $this->payment_params->pending_status) &&
-					!($dbOrder->order_status == $this->payment_params->paid_status && $arrRequest['pg_result'] == 1) && 
+					!($dbOrder->order_status == $this->payment_params->paid_status && $arrRequest['pg_result'] == 1) &&
 					!($dbOrder->order_status == $this->payment_params->canceled_status && $arrRequest['pg_result'] == 0)))
-				
-				$strResponseDescription = "Товар не доступен. Либо заказа нет, либо его статус " . $statuses[$dbOrder->order_status];		
+
+				$strResponseDescription = "Товар не доступен. Либо заказа нет, либо его статус " . $statuses[$dbOrder->order_status];
 			elseif(sprintf('%0.2f',$arrRequest['pg_amount']) != sprintf('%0.2f',$dbOrder->order_full_price))
 				$strResponseDescription = "Неверная сумма";
 			else {
 				$history = new stdClass();
 				$history->amount = $arrRequest['pg_amount'];
 				$history->data = 'Platron transaction id '.$arrRequest['pg_payment_id'];
-				
+
 				$bResult = 1;
 				$strResponseStatus = 'ok';
 				$strResponseDescription = "Оплата принята";
 				if ($arrRequest['pg_result'] == 1) {
-					// Установим статус оплачен					
+					// Установим статус оплачен
 					$history->notified = 1;
 					$this->modifyOrder($arrRequest['pg_order_id'],$this->payment_params->paid_status,$history);
 				}
@@ -181,7 +181,7 @@ class plgHikashoppaymentPlatron extends hikashopPaymentPlugin
 		header("Content-type: text/xml");
 		echo $objResponse->asXML();
 		die();
-	
+
 	}
 
 	function getPaymentDefaultValues(&$element) {
